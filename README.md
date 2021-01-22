@@ -9,8 +9,8 @@ When executing the script for the first time, one'll be asked to input their Duo
 ```json
 {
     "auth": {
-        "email": "example@domain.com",
-        "password": "MySuperSecurePassword"
+        "email": "d.morgan@mmpd.gov.us",
+        "password": "FUCKINGPASSWORD"
     }
 }
 ```
