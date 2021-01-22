@@ -18,6 +18,11 @@ When executing the script for the first time, one'll be asked to input their Duo
 After the first execution, however, the script will automatically detect the configuration file and read info from it.<br>
 Note that the user will also be asked to input an integer indicating the lesson to be exercised. After that, all that's left to do is reading and answering the questions (will appear on terminal as well).
 
+### Dependencies
+
+The only 3rd party module imported by `duolingo.sh` is, as previuosly said, `pyppeteer`.
+
+### BTW
 
 You, my fellow programmer and Duolingo user, may be interested in [`streakpy`](https://github.com/bored-user/streakpy). A bot to keep Duolingo streaks going (also writen in Python). Check it out!
 
