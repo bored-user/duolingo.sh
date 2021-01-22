@@ -2,6 +2,8 @@ import os
 import re
 import time
 
+from colorama import Fore, Style
+
 
 async def wait_loading(query, page, once=False):
     element = await page.querySelector(query)
@@ -24,14 +26,11 @@ async def find_available_lessons(page):
         await skills[i].click()
 
         if await page.evaluate("p => p.textContent.toUpperCase().includes('LOCKED')", await wait_loading('div[data-test=skill-popout]', page)):
-            return [titles[j] for j in range(i - 1)]
+            return [titles[j] for j in range(i)]
 
 
 def get_lesson(skills) -> int:
-    width = len(str(len(skills) + 1))
-
-    for i in range(len(skills)):
-        print(f"[{str(i + 1).rjust(width, '0')}]. {skills[i][1:] if re.search('[0-9]', skills[i][0]) != None else skills[i]}")
+    [print(f"[{str(i + 1).rjust(len(str(len(skills) + 1)), '0')}]. {skills[i][1:] if re.search('[0-9]', skills[i][0]) != None else skills[i]}") for i in range(len(skills))]
 
     try:
         return int(input('> Input the lesson to practice: '))
@@ -49,24 +48,83 @@ async def start(skill: int, page):
 
 
 async def loop(page):
+    async def enable_keyboard():
+        if not is_keyboard_on:
+            await keyboard.click()
+
+    async def click_next():
+        await wait_loading('body', page, True)
+        await (await page.querySelector('button[data-test=player-next]')).click()
+
+    async def check_answer():
+        await wait_loading('body', page, True)
+        result = await page.querySelector('div[data-test*=blame]')
+
+
+        print(
+            f"{Fore.RED}Incorrect!{Style.RESET_ALL}: {await page.evaluate('d => d.children[1].firstChild.firstChild.children[1].textContent', result)}"
+                if await page.evaluate("d => d.getAttribute('data-test').includes('incorrect')", result)
+                else
+            f'{Fore.GREEN}Correct!{Style.RESET_ALL}'
+        )
+
+        time.sleep(3)
+
+    async def translate_prompt():
+        print(await get_words(page, 'span[data-test=hint-sentence] > *'))
+        answer = input(f'> Input your answer: ')
+        
+        if keyboard:
+            await enable_keyboard()
+
+        await (await wait_loading('textarea[data-test=challenge-translate-input]', page)).type(answer)
+
+    async def form_prompt():
+        print('form prompt here!')
+
+    async def judge():
+        print(await page.evaluate('h => h.parentElement.nextElementSibling.firstChild.textContent', header))
+
+        options = await get_words(page, 'div[data-test=challenge-judge-text]', False)
+        [print(f"[{str(i + 1).rjust(len(str(len(options) + 1)), '0')}]. {options[i]}") for i in range(len(options))]
+
+        try:
+            answer = int(input('> Input your answer: '))
+        except ValueError:
+            print(f'Please, enter a number from 1 to {len(options)}')
+            time.sleep(3)
+            return judge()
+
+        await (await page.querySelectorAll('label[data-test=challenge-choice]'))[answer - 1].click()
+
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
-        header = await page.querySelectorEval('[data-test=challenge-header]', 'h => h.textContent')
-        keyboard = await page.querySelector('button[data-test=player-toggle-keyboard]')
-        is_keyboard_on = await page.evaluate("k => !k.textContent.toUpperCase().includes('KEYBOARD')", keyboard) if not keyboard == None else False
+        await wait_loading('body', page, True)
 
-        if not await page.querySelector('div[data-test=challenge-translate-prompt]') == None:
-            print(await get_words(page))
-            answer = input(f'> {header}: ')
+        try:
+            header = await page.querySelector('h1[data-test=challenge-header]')
+            keyboard = await page.querySelector('button[data-test=player-toggle-keyboard]')
+            is_keyboard_on = await page.evaluate("k => !k.textContent.toUpperCase().includes('KEYBOARD')", keyboard) if keyboard else True
+            print(await page.evaluate('h => h.textContent', header))
+        except:
+            await click_next()
 
-            if not keyboard == None:
-                if not is_keyboard_on:
-                    await keyboard.click()
+        if await page.querySelector('div[data-test=challenge-translate-prompt]'):
+            await translate_prompt()
+        elif await page.querySelector('div[data-test=challenge-form-prompt]'):
+            await form_prompt()
+        elif await page.querySelector("div[data-test='challenge challenge-judge']"):
+            await judge()
+        elif await page.querySelector("div[data-test='challenge challenge-listenTap']"):
+            await (await page.querySelector('button[data-test=player-skip]')).click()
+        else:
+            print('not programmed yet :(')
 
-                textarea = await wait_loading('textarea[data-test=challenge-translate-input]', page)
-                await textarea.type(answer)
-                await (await page.querySelector('button[data-test=player-next]')).click()
-        elif not await page.querySelector('div[data-test=challenge-form-prompt]') == None:
-            pass
+        await click_next()
+        await check_answer()
+        await click_next()
+        await wait_loading('body', page, True)
+        time.sleep(0.5)
 
-async def get_words(page): return (await page.querySelectorAllEval('span[data-test=hint-sentence] > *', "words => words.map(word => word.innerHTML).join('')"))
+
+async def get_words(page, query, join=True): return (await page.querySelectorAllEval(query, f"words => words.map(word => word.textContent){'.join(``)' if join else ''}"))
