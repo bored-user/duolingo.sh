@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import urllib.parse
 
 from colorama import Fore, Style
 
@@ -69,11 +70,12 @@ async def loop(page):
         )
 
         time.sleep(3)
+        await click_next()
 
     async def translate_prompt():
         print(await get_words(page, 'span[data-test=hint-sentence] > *'))
         answer = input(f'> Input your answer: ')
-        
+
         if keyboard:
             await enable_keyboard()
 
@@ -98,6 +100,7 @@ async def loop(page):
         await (await page.querySelectorAll('label[data-test=challenge-choice]'))[answer - 1].click()
 
     while True:
+        do_not_check_answer = False
         os.system('cls' if os.name == 'nt' else 'clear')
         await wait_loading('body', page, True)
 
@@ -105,24 +108,36 @@ async def loop(page):
             header = await page.querySelector('h1[data-test=challenge-header]')
             keyboard = await page.querySelector('button[data-test=player-toggle-keyboard]')
             is_keyboard_on = await page.evaluate("k => !k.textContent.toUpperCase().includes('KEYBOARD')", keyboard) if keyboard else True
-            print(await page.evaluate('h => h.textContent', header))
         except:
             await click_next()
 
         if await page.querySelector('div[data-test=challenge-translate-prompt]'):
+            print(await page.evaluate('h => h.textContent', header))
             await translate_prompt()
         elif await page.querySelector('div[data-test=challenge-form-prompt]'):
+            print(await page.evaluate('h => h.textContent', header))
             await form_prompt()
         elif await page.querySelector("div[data-test='challenge challenge-judge']"):
+            print(await page.evaluate('h => h.textContent', header))
             await judge()
         elif await page.querySelector("div[data-test='challenge challenge-listenTap']"):
+            do_not_check_answer = True
             await (await page.querySelector('button[data-test=player-skip]')).click()
         else:
-            print('not programmed yet :(')
+            print('Oooops, exercise-type handler not programmed yet! Sorry')
+
+            try:
+                language_code = re.search(r'\/.*\/(.*)\/.*\/[0-9]*', urllib.parse.urlparse(page.url).path)[1]
+                print(f"Create a new issue in https://github.com/bored-user/duolingo.sh/issues/new\nwith the '[{language_code}] missing code for exercise-type' title\n\nPlease, attach the `realtime.png` image to the issue and the exercise header (that should've shown up on your terminal).\nIf possible, also state the exercise type (listening, speaking, type what you hear, etc.).")
+            except IndexError:
+                print("     Oooops (#2), when trying to identify the language code based on the URL, another exception occured (lmao, shame on me).\n     Please, go to https://github.com/bored-user/duolingo.sh/issues/new and create an issue named 'Error while trying to identify the language code'.\n      Please, also attach the `realtime.png` image file and state the Duolingo URL you were on (not 'duolingo.com/learn'. Should be something like 'duolingo.com/skill/[language_code]/[lesson_name]/[some_number]').")
+
+            exit(1)
 
         await click_next()
-        await check_answer()
-        await click_next()
+        if not do_not_check_answer:
+            await check_answer()
+
         await wait_loading('body', page, True)
         time.sleep(0.5)
 
