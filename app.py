@@ -7,12 +7,12 @@ import lesson
 
 
 async def main():
-    os.system('cls' if os.name == 'nt' else 'clear')
     config = {
         'auth': {}
     }
 
     browser, page = await login.get_credentials(config) if not login.check_credentials(config) else await login.login(config['auth']['email'], config['auth']['password'])
+    os.system('cls' if os.name == 'nt' else 'clear')
     print('Logged in!')
 
     await lesson.wait_loading('div[data-test=skill-icon]', page)

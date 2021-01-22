@@ -8,7 +8,7 @@ import lesson
 
 
 def check_credentials(config):
-    if os.path.isfile('config.json'):
+    if os.path.isfile('config.json') and 'auth' in json.load(open('config.json', 'r')):
         config['auth'] = json.load(open('config.json', 'r'))['auth']
         return True
 
