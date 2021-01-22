@@ -13,9 +13,10 @@ async def main():
     }
 
     browser, page = await login.get_credentials(config) if not login.check_credentials(config) else await login.login(config['auth']['email'], config['auth']['password'])
-    print('Logged in\nFinding available lessons (this can take a while)')
+    print('Logged in!')
 
     await lesson.wait_loading('div[data-test=skill-icon]', page)
+    print('Finding available lessons (this can take a while)')
     available_lessons = await lesson.find_available_lessons(page)
     skill = lesson.get_lesson(available_lessons)
     await lesson.start(skill, page)
